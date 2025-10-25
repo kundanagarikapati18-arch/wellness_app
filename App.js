@@ -1,290 +1,407 @@
-import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Home, Calendar as CalIcon, Smile, BookOpen } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import {
+  ResponsiveContainer,
   LineChart,
   Line,
-  ResponsiveContainer,
   XAxis,
   YAxis,
-  Tooltip
+  Tooltip,
 } from "recharts";
+import { Home, Calendar as CalIcon, Smile, BookOpen } from "lucide-react";
+import "./styles.css";
 
-/*
-  App.js - Wellness Wizard (mobile-style layout)
-  - Dashboard with meme and habits
-  - Calendar with streak dots
-  - Mood analytics with simple chart
-  - Private journal with AI safety pop-up
-  - Meme feed screen
-  - Bottom navigation
-*/
-
-const sampleMeme1 = "https://i.imgflip.com/7y5j9a.jpg";
-const sampleMeme2 = "https://i.imgflip.com/4/4t0m5.jpg";
-
-function buildRecentDays(n = 30) {
-  const arr = [];
-  for (let i = n-1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    arr.push(d);
-  }
-  return arr;
-}
-
-export default function App() {
-  const [screen, setScreen] = useState("home"); // home, calendar, mood, journal, memes
-  const [habits, setHabits] = useState([
-    { id: "h1", title: "Meditation", done: false },
-    { id: "h2", title: "Water (8 cups)", done: false },
-    { id: "h3", title: "Read 10 min", done: false }
-  ]);
-  const [journal, setJournal] = useState("");
-  const [aiResponse, setAIResponse] = useState(null);
-  const [liked, setLiked] = useState({}); // meme likes
-  const [mood, setMood] = useState("Calm");
-  const [moodHistory, setMoodHistory] = useState([
-    { day: "Mon", value: 6 },
-    { day: "Tue", value: 7 },
-    { day: "Wed", value: 6 },
-    { day: "Thu", value: 7 },
-    { day: "Fri", value: 8 },
-    { day: "Sat", value: 7 },
-    { day: "Sun", value: 7 }
-  ]);
-  // simple completed-days map (for calendar)
-  const recentDays = useMemo(() => buildRecentDays(35), []);
-  const [completedMap, setCompletedMap] = useState(() => {
-    const m = {};
-    // seed some completed days for demo
-    recentDays.slice(5, 25).forEach((d, i) => {
-      if (i % 3 !== 0) {
-        m[d.toDateString()] = true;
-      }
-    });
-    return m;
+// 🌿 Habit Tracker
+const HabitTracker = () => {
+  const [habits, setHabits] = useState(() => {
+    const saved = localStorage.getItem("habits");
+    return saved
+      ? JSON.parse(saved)
+      : [
+          { id: 1, name: "Drink Water 💧", completed: false },
+          { id: 2, name: "Walk 5k Steps 🚶‍♀️", completed: false },
+          { id: 3, name: "Read 10 Pages 📖", completed: false },
+        ];
   });
 
+  const [newHabit, setNewHabit] = useState("");
+
   const toggleHabit = (id) => {
-    setHabits((h) => h.map(x => x.id === id ? {...x, done: !x.done} : x));
+    const updated = habits.map((h) =>
+      h.id === id ? { ...h, completed: !h.completed } : h
+    );
+    setHabits(updated);
+    localStorage.setItem("habits", JSON.stringify(updated));
+  };
+
+  const addHabit = () => {
+    if (!newHabit.trim()) return;
+    const newH = { id: Date.now(), name: newHabit, completed: false };
+    const updated = [...habits, newH];
+    setHabits(updated);
+    setNewHabit("");
+    localStorage.setItem("habits", JSON.stringify(updated));
+  };
+
+  return (
+    <div className="p-4 space-y-3">
+      <h2 className="text-lg font-semibold text-gray-800">Today's Habits 🌿</h2>
+      {habits.map((habit) => (
+        <button
+          key={habit.id}
+          onClick={() => toggleHabit(habit.id)}
+          className={`w-full p-3 rounded-xl text-left transition ${
+            habit.completed
+              ? "bg-green-200 text-green-800"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {habit.name}
+        </button>
+      ))}
+
+      <div className="flex space-x-2 pt-2">
+        <input
+          type="text"
+          value={newHabit}
+          onChange={(e) => setNewHabit(e.target.value)}
+          placeholder="Add a new habit..."
+          className="flex-1 border p-2 rounded-xl"
+        />
+        <button
+          onClick={addHabit}
+          className="bg-purple-500 text-white px-4 rounded-xl"
+        >
+          ➕
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 😊 Mood Tracker + Analysis
+const MoodTracker = () => {
+  const [mood, setMood] = useState("");
+  const [moodData, setMoodData] = useState(() => {
+    const saved = localStorage.getItem("moodData");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const moods = ["😊", "😐", "😢", "😡", "😴"];
+
+  useEffect(() => {
+    localStorage.setItem("moodData", JSON.stringify(moodData));
+  }, [moodData]);
+
+  const recordMood = (m) => {
+    setMood(m);
+    const newData = [
+      ...moodData,
+      { date: new Date().toLocaleDateString(), mood: m },
+    ];
+    setMoodData(newData);
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mb-2">What’s your mood today?</h2>
+      <div className="flex justify-around">
+        {moods.map((m) => (
+          <button
+            key={m}
+            onClick={() => recordMood(m)}
+            className={`text-3xl transition ${
+              mood === m ? "scale-125" : "opacity-60"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+      {mood && (
+        <p className="text-center mt-3 text-gray-600">
+          You’re feeling {mood} today
+        </p>
+      )}
+
+      {moodData.length > 1 && (
+        <div className="mt-5">
+          <h3 className="text-md font-semibold mb-2">Mood & Habit Trends 📈</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart
+              data={moodData.map((m, i) => ({
+                day: i + 1,
+                moodScore: (i * 2) % 5,
+              }))}
+            >
+              <XAxis dataKey="day" />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="moodScore"
+                stroke="#8884d8"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 📅 Calendar with Streaks
+const CalendarView = () => {
+  const [streak, setStreak] = useState(5);
+  const days = Array.from({ length: 30 }, (_, i) => ({
+    day: i + 1,
+    completed: Math.random() > 0.3,
+  }));
+
+  return (
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mb-2">Your Streak 🔥</h2>
+      <p className="text-sm text-gray-500 mb-2">
+        Current streak: {streak} days
+      </p>
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((d) => (
+          <div
+            key={d.day}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg ${
+              d.completed ? "bg-green-400" : "bg-gray-200"
+            }`}
+          >
+            {d.day}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 🔐 Journal
+const Journal = () => {
+  const [unlocked, setUnlocked] = useState(false);
+  const [pin, setPin] = useState("");
+  const [journal, setJournal] = useState(
+    () => localStorage.getItem("journal") || ""
+  );
+
+  const handleUnlock = () => {
+    if (pin === "1234") setUnlocked(true);
+    else alert("Wrong PIN! Try 1234 for demo.");
   };
 
   const saveJournal = () => {
-    // simple local AI keyword detector
-    const txt = journal.toLowerCase();
-    const critical = ["kill myself", "i want to die", "suicide"];
-    const high = ["hurt myself", "self harm", "cut myself"];
-    const medium = ["hopeless", "worthless", "no point"];
-    const low = ["sad", "depressed", "anxious", "stressed"];
-    let level = null;
-    if (critical.some(w => txt.includes(w))) level = "critical";
-    else if (high.some(w => txt.includes(w))) level = "high";
-    else if (medium.some(w => txt.includes(w))) level = "medium";
-    else if (low.some(w => txt.includes(w))) level = "low";
-
-    if (level) {
-      setAIResponse({
-        level,
-        message: level === "critical" ? "This sounds urgent. Please contact emergency services or a crisis line now." : "I can tell you're feeling down. Would you like a grounding exercise or calming playlist?",
-        options: level === "critical" ? ["Call crisis line", "Show resources"] : ["Grounding activity", "Calming playlist"]
-      });
-    } else {
-      setAIResponse(null);
-      // clear journal after save for demo
-      setJournal("");
-      alert("Saved to your private vault (demo).");
-    }
+    localStorage.setItem("journal", journal);
+    alert("Saved securely 📝");
   };
 
-  const toggleLike = (key) => {
-    setLiked(l => ({...l, [key]: (l[key]||0)+1 }));
-  };
-
-  const currentStreak = () => {
-    // count consecutive trues from the latest day backward
-    const keys = recentDays.map(d => d.toDateString());
-    let streak = 0;
-    for (let i = keys.length - 1; i >= 0; i--) {
-      if (completedMap[keys[i]]) streak++;
-      else break;
-    }
-    return streak;
-  };
-
-  // small UI components to match screenshot style
-  const Card = ({children, className=""}) => <div className={"bg-white rounded-3xl shadow-sm p-4 " + className}>{children}</div>
+  if (!unlocked)
+    return (
+      <div className="p-4 text-center">
+        <h2 className="text-lg font-semibold mb-2">
+          Enter PIN to Unlock Journal 🔒
+        </h2>
+        <input
+          type="password"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="Enter PIN"
+          className="border p-2 rounded-xl w-40"
+        />
+        <button
+          onClick={handleUnlock}
+          className="block mx-auto mt-3 bg-purple-500 text-white px-4 py-2 rounded-xl"
+        >
+          Unlock
+        </button>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen flex flex-col items-center pt-6 pb-20 px-4 bg-gradient-to-b from-[#f6f1fa] to-[#fbf5fb]">
-      {/* content container (mobile width) */}
-      <div className="w-full max-w-xs space-y-5">
-
-        {/* Home / Dashboard */}
-        {screen === "home" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-2xl font-semibold text-[#101025]">Good morning, Jamie!</h1>
-                <p className="text-sm text-gray-500">Your daily wellness at a glance</p>
-              </div>
-              <div className="text-sm text-gray-500">●</div>
-            </div>
-
-            <Card>
-              <img src={sampleMeme1} alt="meme" className="rounded-2xl w-full h-36 object-cover mb-3" />
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-800">
-                    <span className="bg-[#eef2ff] p-2 rounded-full"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L12 22" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round"/></svg></span>
-                    <div> Meditation</div>
-                  </div>
-                  <div>›</div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-800">
-                    <span className="bg-[#eef7ff] p-2 rounded-full"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L12 22" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round"/></svg></span>
-                    <div> Water</div>
-                  </div>
-                  <div>›</div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-800">
-                    <span className="bg-[#f0f0ff] p-2 rounded-full"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L12 22" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round"/></svg></span>
-                    <div> Read 10 min</div>
-                  </div>
-                  <div>›</div>
-                </div>
-
-                <button onClick={() => setScreen("calendar")} className="w-full mt-3 text-purple-600 font-semibold">View Calendar</button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Calendar */}
-        {screen === "calendar" && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-[#101025] text-center">Calendar</h2>
-            <p className="text-center text-gray-500">April 2024</p>
-            <div className="grid grid-cols-7 gap-1 text-center text-sm text-gray-600">
-              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => <div key={d} className="py-1">{d}</div>)}
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {recentDays.map((d, idx) => {
-                const key = d.toDateString();
-                const done = !!completedMap[key];
-                return (
-                  <div key={idx} className="h-10 flex items-center justify-center">
-                    <div className={`h-8 w-8 rounded-full ${done ? 'bg-purple-300 text-white' : 'text-gray-600' } flex items-center justify-center`}>
-                      {d.getDate()}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <button onClick={() => setScreen("mood")} className="text-purple-600 font-semibold mt-4">Today's mood...</button>
-          </div>
-        )}
-
-        {/* Mood / Analytics */}
-        {screen === "mood" && (
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <button onClick={() => setScreen("calendar")} className="mr-2">←</button>
-              <h2 className="text-xl font-semibold">Your private space</h2>
-            </div>
-
-            <Card>
-              <div style={{height: 90}}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={moodHistory}>
-                    <XAxis dataKey="day" hide />
-                    <YAxis domain={[4,9]} hide />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="value" stroke="#a78bfa" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            <div className="space-y-3">
-              <Card>
-                <div className="text-sm text-gray-500">Trends</div>
-                <div className="mt-2 text-2xl font-semibold">83%</div>
-                <div className="text-sm text-gray-500 mt-1">Mood is generally <span className="font-semibold">Calm</span></div>
-              </Card>
-
-              <Card>
-                <div className="text-sm text-gray-500">History</div>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {habits.map(h => <li key={h.id} className="flex justify-between"><div>{h.title}</div><div className="text-gray-400">{h.done ? '✓' : ''}</div></li>)}
-                </ul>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {/* Journal with AI pop-up */}
-        {screen === "journal" && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Your private space</h2>
-            <Card>
-              <textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Journal your thoughts..." className="w-full rounded-2xl p-3 min-h-[120px] border border-gray-100" />
-              <div className="mt-3 text-sm text-gray-500 flex items-center gap-2">
-                <div className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">AI</div>
-                AI safety watcher scanning for distress signals...
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button onClick={saveJournal} className="bg-purple-600 text-white px-4 py-2 rounded-full">Save to Vault</button>
-                <button onClick={() => { setJournal(''); setAIResponse(null); }} className="px-4 py-2 rounded-full border">Discard</button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Meme Feed */}
-        {screen === "memes" && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Meme Feed</h2>
-            <Card className="p-0">
-              <img src={sampleMeme2} alt="meme" className="w-full h-64 object-cover rounded-2xl" />
-              <div className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21s-6-4.35-9-7a6 6 0 0 1 9-9 6 6 0 0 1 9 9c-3 2.65-9 7-9 7z" stroke="#111827" strokeWidth="1.2"/></svg> <span>{(liked['m2']||24)}</span></div>
-                <button onClick={() => toggleLike('m2')} className="text-sm text-gray-600">Like</button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-      </div>
-
-      {/* bottom nav */}
-      <div className="fixed bottom-3 left-0 w-full flex justify-center pointer-events-none">
-        <div className="w-full max-w-xs bg-white rounded-3xl shadow-lg py-2 px-3 flex justify-between items-center pointer-events-auto">
-          <button onClick={() => setScreen("home")} className={`flex-1 text-center py-2 ${screen==='home'?'text-purple-600':''}`}><Home size={18} className="mx-auto"/></button>
-          <button onClick={() => setScreen("calendar")} className={`flex-1 text-center py-2 ${screen==='calendar'?'text-purple-600':''}`}><CalIcon size={18} className="mx-auto" /></button>
-          <button onClick={() => setScreen("mood")} className={`flex-1 text-center py-2 ${screen==='mood'?'text-purple-600':''}`}><Smile size={18} className="mx-auto" /></button>
-          <button onClick={() => setScreen("journal")} className={`flex-1 text-center py-2 ${screen==='journal'?'text-purple-600':''}`}><BookOpen size={18} className="mx-auto" /></button>
-          <button onClick={() => setScreen("memes")} className={`flex-1 text-center py-2 ${screen==='memes'?'text-purple-600':''}`}><span className="text-xl">😂</span></button>
-        </div>
-      </div>
-
-      {/* AI response pop-up */}
-      {aiResponse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
-          <div className="bg-[#1A1B2E] text-white rounded-3xl p-6 w-80 shadow-lg space-y-4 animate-fadeIn">
-            <p className="text-sm leading-relaxed">{aiResponse.message}</p>
-            <div className="flex flex-col gap-2">
-              {aiResponse.options.map(opt => (
-                <button key={opt} className="bg-[#2C2D45] rounded-full px-4 py-2">{opt}</button>
-              ))}
-            </div>
-            <button onClick={() => setAIResponse(null)} className="text-gray-400 text-xs mt-2">✕ Close</button>
-          </div>
-        </div>
-      )}
-
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mb-2">Private Journal 🪶</h2>
+      <textarea
+        value={journal}
+        onChange={(e) => setJournal(e.target.value)}
+        placeholder="Write your thoughts here..."
+        className="w-full h-40 border p-3 rounded-xl"
+      />
+      <button
+        onClick={saveJournal}
+        className="mt-3 bg-green-500 text-white px-4 py-2 rounded-xl"
+      >
+        Save
+      </button>
     </div>
   );
-}
+};
+
+// 💬 Chatbot
+const Chatbot = () => {
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Hey 👋 How are you feeling today?" },
+  ]);
+  const [input, setInput] = useState("");
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+    const newMessages = [...messages, { sender: "user", text: input }];
+    let reply = "I hear you ❤️ Want to talk more about it?";
+    if (input.toLowerCase().includes("sad"))
+      reply =
+        "I'm sorry you're sad 😔. Maybe try journaling or go for a walk?";
+    if (input.toLowerCase().includes("happy"))
+      reply = "That's awesome! 🎉 Keep the good vibes going!";
+    setMessages([...newMessages, { sender: "bot", text: reply }]);
+    setInput("");
+  };
+
+  return (
+    <div className="p-4 flex flex-col h-[80vh]">
+      <h2 className="text-lg font-semibold mb-2">
+        Chat with your Wellness Buddy 🤖
+      </h2>
+      <div className="flex-1 overflow-y-auto bg-gray-50 p-3 rounded-xl space-y-2">
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`p-2 rounded-xl max-w-[75%] ${
+              m.sender === "bot"
+                ? "bg-purple-100 self-start"
+                : "bg-green-100 self-end ml-auto"
+            }`}
+          >
+            {m.text}
+          </div>
+        ))}
+      </div>
+      <div className="flex mt-3 space-x-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type here..."
+          className="flex-1 border p-2 rounded-xl"
+        />
+        <button
+          onClick={sendMessage}
+          className="bg-purple-500 text-white px-4 rounded-xl"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 🏠 Main App
+const App = () => {
+  const [screen, setScreen] = useState("home");
+  const [user, setUser] = useState(
+    () => localStorage.getItem("username") || ""
+  );
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  return (
+    <div className="max-w-md mx-auto bg-white rounded-3xl shadow-xl overflow-hidden h-[90vh] relative">
+      {!user ? (
+        <div className="p-6 text-center">
+          <h2 className="text-xl font-semibold mb-3">Welcome 🌞</h2>
+          <input
+            type="text"
+            placeholder="Enter your name"
+            className="border p-2 rounded-xl w-2/3"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                localStorage.setItem("username", e.target.value);
+                setUser(e.target.value);
+              }
+            }}
+          />
+          <p className="text-sm text-gray-500 mt-2">Press Enter to continue</p>
+        </div>
+      ) : (
+        <>
+          {screen === "home" && (
+            <div>
+              <div className="p-4">
+                <h2 className="text-xl font-semibold mb-2">
+                  {greeting}, {user}! 🌻
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  Let’s make today awesome.
+                </p>
+              </div>
+              <HabitTracker />
+              <div className="p-4">
+                <h3 className="text-md font-semibold mb-2">Daily Motivation</h3>
+                <img
+                  src="https://i.imgur.com/dYcYQ7B.jpeg"
+                  alt="Daily Meme"
+                  className="rounded-xl w-full h-40 object-cover"
+                />
+              </div>
+            </div>
+          )}
+          {screen === "calendar" && <CalendarView />}
+          {screen === "mood" && <MoodTracker />}
+          {screen === "journal" && <Journal />}
+          {screen === "chatbot" && <Chatbot />}
+
+          {/* 🌈 Bottom Nav */}
+          <div className="fixed bottom-3 left-0 w-full flex justify-center pointer-events-none">
+            <div className="w-full max-w-xs bg-white rounded-3xl shadow-lg py-2 px-3 flex justify-between items-center pointer-events-auto">
+              <button
+                onClick={() => setScreen("home")}
+                className={`flex-1 text-center py-2 ${
+                  screen === "home" ? "text-purple-600" : ""
+                }`}
+              >
+                <Home size={18} className="mx-auto" />
+              </button>
+              <button
+                onClick={() => setScreen("calendar")}
+                className={`flex-1 text-center py-2 ${
+                  screen === "calendar" ? "text-purple-600" : ""
+                }`}
+              >
+                <CalIcon size={18} className="mx-auto" />
+              </button>
+              <button
+                onClick={() => setScreen("mood")}
+                className={`flex-1 text-center py-2 ${
+                  screen === "mood" ? "text-purple-600" : ""
+                }`}
+              >
+                <Smile size={18} className="mx-auto" />
+              </button>
+              <button
+                onClick={() => setScreen("journal")}
+                className={`flex-1 text-center py-2 ${
+                  screen === "journal" ? "text-purple-600" : ""
+                }`}
+              >
+                <BookOpen size={18} className="mx-auto" />
+              </button>
+              <button
+                onClick={() => setScreen("chatbot")}
+                className={`flex-1 text-center py-2 ${
+                  screen === "chatbot" ? "text-purple-600" : ""
+                }`}
+              >
+                💬
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default App;
